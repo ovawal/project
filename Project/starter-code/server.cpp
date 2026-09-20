@@ -88,6 +88,31 @@ int main(int argc, char *argv[]) {
     // 1. The PORT number and assign it to port_to_use
     // 2. The DB_FILE name and assign it to db_file_to_use
 
+    //Wally changes below
+    std::ifstream server_conf("server.conf");
+    if (server_conf.is_open()) {
+        std::cout << "File opened successfully: " << argv[1] << std::endl;
+    } else {
+        std::cerr << "Error: Could  not open file: " << argv[1] << std::endl;
+        return 1;
+    }
+    std::string key, value;
+    while (server_conf >> key >> value) {
+        
+        if (value == "=") {
+            std::string actual_value;
+            if (server_conf >> actual_value) {
+                value = actual_value;
+            } 
+        }
+
+        if (key == "PORT=") {
+            port_to_use = value;
+        } else if (key == "DB_FILE=") {
+            db_file_to_use = value;
+        }
+    }
+
     if (port_to_use.empty() || db_file_to_use.empty()) {
         std::cerr << "Error: server.conf parsing not implemented. Variables are empty." << std::endl;
         return 1;
