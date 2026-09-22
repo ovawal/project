@@ -61,6 +61,34 @@ void handle_client(int client_fd, struct sockaddr_storage their_addr) {
     // 4. Send the appropriate reply codes (e.g., 200, 210, 403, 404, etc.) back to the client.
 
     // Close the socket for this connection when the interaction is finished or BYE is received
+    //
+    //*********For my first test below************//
+    std::string welcome_msg = "Connected to server successfully.\n";
+    ssize_t bytes_sent = send(client_fd, welcome_msg.c_str(), welcome_msg.size(), 0);
+    if (bytes_sent == -1) {
+        perror("server: send failed");
+    }
+    
+    char buffer[1024];
+    ssize_t bytes_received;
+    //Solution for 1
+    while ((bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        // Null-terminate the received data so we can print it safely
+        buffer[bytes_received] = '\0';
+        std::cout << "Received from client: " << buffer;
+
+        // Echo the exact same data back to the client
+        ssize_t bytes_sent = send(client_fd, buffer, bytes_received, 0);
+        if (bytes_sent == -1) {
+            perror("server: send failed");
+            break;
+        }
+    }
+
+    if (bytes_received == -1) {
+        perror("server: recv failed");
+    }
+    //*************************End of first test********************//
     close(client_fd);
     std::cout << "server: connection with " << s << " closed." << std::endl;
 }
@@ -91,28 +119,27 @@ int main(int argc, char *argv[]) {
     //Wally changes below
     std::ifstream server_conf("server.conf");
     if (server_conf.is_open()) {
-        std::cout << "File opened successfully: " << argv[1] << std::endl;
+        std::cout << "server.conf opened successfully: " << argv[1] << std::endl;
     } else {
-        std::cerr << "Error: Could  not open file: " << argv[1] << std::endl;
+        std::cerr << "Error: Could  not open server.conf: " << argv[1] << std::endl;
         return 1;
     }
-    std::string key, value;
-    while (server_conf >> key >> value) {
-        
-        if (value == "=") {
-            std::string actual_value;
-            if (server_conf >> actual_value) {
-                value = actual_value;
-            } 
-        }
-
-        if (key == "PORT=") {
-            port_to_use = value;
-        } else if (key == "DB_FILE=") {
-            db_file_to_use = value;
+    std::string line;
+    while (std::getline(server_conf, line)) {
+        size_t delimiter_pos = line.find('=');
+        if (delimiter_pos != std::string::npos) {
+            std::string key = line.substr(0, delimiter_pos);
+            std::string value = line.substr(delimiter_pos + 1);
+            if (key == "PORT") {
+                port_to_use = value;
+            } else if (key == "DB_FILE") {
+                db_file_to_use = value;
+            }
         }
     }
-
+    server_conf.close();
+    std::cout << "Parsed server.conf: PORT=" << port_to_use << ", DB_FILE=" << db_file_to_use << std::endl;
+    
     if (port_to_use.empty() || db_file_to_use.empty()) {
         std::cerr << "Error: server.conf parsing not implemented. Variables are empty." << std::endl;
         return 1;
